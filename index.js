@@ -17,9 +17,9 @@ exports.handler = (event, context, callback) => {
         body = JSON.parse(event.body);
         prefs = Number(body.result.parameters.jishin);
     }
-
+    
     if (prefs == null || prefs == 0 ||event.body == null) {
-        const message = "すいません、見つかりませんでした。";
+        const message = "すみません、見つかりませんでした。";
         callback(null, {
             "statusCode": 200, 
             "body": build_callback_data(message)
