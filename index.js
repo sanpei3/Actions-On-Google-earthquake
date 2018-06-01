@@ -24,7 +24,40 @@ const build_callback_data_withoid = (message, oid) => {
                     oid: oid,
                 }
             }
-        ]
+        ],
+        data: {
+            google: {
+                richResponse: {
+                    items: [
+                        {
+                            simpleResponse: {
+                                textToSpeech: message,
+                            }
+                        },
+                       {
+                            basicCard: {
+                                title: "P2P地震情報より",
+                                image: {
+                                    url: "https://www.p2pquake.net/img/api/gen/" + oid + ".png",
+                                    accessibilityText: "Image alternate text"
+                                },
+                                buttons: [
+                                    {
+                                        title: "P2P地震情報へ",
+                                        openUrlAction: {
+                                            url: "https://www.p2pquake.net/app/web/",
+                                        }
+                                    }
+                                ]
+                            }
+                        
+                        }
+                    ],
+                    suggestions: []
+                }
+            }
+        }
+
     };
 
     return JSON.stringify(json);
@@ -76,9 +109,17 @@ exports.handler = (event, context, callback) => {
                 result = "同じ地震が、" + vs[1] + "でした。" + vs[2];
             }
         }
-        callback(null, {
-            "statusCode": 200, 
-            "body": build_callback_data_withoid(result, oid)
-        })
+        if (oid != "ffffffffffff") {
+            callback(null, {
+                "statusCode": 200, 
+                "body": build_callback_data_withoid(result, oid)
+            });
+        } else {
+            callback(null, {
+                "statusCode": 200, 
+                "body": build_callback_data(result)
+            });
+            
+        }
     });
 };
