@@ -20,16 +20,9 @@ app.intent('earthquake', (conv, { jishin }) => {
     if(jishin != null) {
         prefs = Number(jishin);
     }
-    
-// not yet impliment
-//    if (body.result != undefined && body.result.contexts != undefined) {
-//        for (var p in body.result.contexts) {
-//            var c = body.result.contexts[p];
-//            if (c.parameters != undefined && c.parameters.oid != undefined) {
-//                oid_old = c.parameters.oid;
-//            }
-//        }
-//    }
+    if (conv.data.oid != undefined) {
+	oid_old = conv.data.oid;
+    }
     if (prefs == null || prefs == 0) {
         const message = "すみません、見つかりませんでした。";
 	return conv.ask(message);
@@ -47,6 +40,7 @@ app.intent('earthquake', (conv, { jishin }) => {
 		reject(err);
             }
             var result = data.Item.info.s;
+	    result = result + "道州地方、都道府県、市区町村で質問ください。"
             var oid = data.Item.info.oid;
             if (oid != "ffffffffffff" && oid == oid_old) {
 		var vs = result.match(/マグニチュード[^、]+、(\S+)、 最大震度は[^。]+。(\S+)/);
@@ -58,6 +52,7 @@ app.intent('earthquake', (conv, { jishin }) => {
 		// not yet impliment to memory latest oid
 		resolve({
 		    simple: result,
+		    oid: oid,
 		    basiccard: new BasicCard({
 			title: "P2P地震情報より",
 			subtitle: "P2P地震情報より",
@@ -75,12 +70,14 @@ app.intent('earthquake', (conv, { jishin }) => {
             }
 	    resolve({
 		simple: result,
-		basiccard: null,
 	    });
 	});
     }).then(result => {
 	conv.ask(result.simple);
-	if (result.basiccard != null) {
+	if (result.oid != undefined) {
+	    conv.data.oid = result.oid;
+	}
+	if (result.basiccard != undefined) {
 	    conv.ask(result.basiccard);
 	}
     }).catch(err => {
