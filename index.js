@@ -3,90 +3,36 @@
 var AWS = require('aws-sdk'),
 documentClient = new AWS.DynamoDB.DocumentClient();
 
-const build_callback_data = (message) => {
-    const json = {
-        speech: message,
-        displayText: message
-    };
+// Import the appropriate service and chosen wrappers
+const {
+    dialogflow,
+    BasicCard,
+    Image,
+    Button,
+} = require('actions-on-google')
 
-    return JSON.stringify(json);
-};
+// Create an app instance
+const app = dialogflow();
 
-const build_callback_data_withoid = (message, oid) => {
-    const json = {
-        speech: message,
-        displayText: message,
-        contextOut: [
-            {
-                name: "remember_this",
-                lifespan: 5,
-                parameters: {
-                    oid: oid,
-                }
-            }
-        ],
-        data: {
-            google: {
-                richResponse: {
-                    items: [
-                        {
-                            simpleResponse: {
-                                textToSpeech: message,
-                            }
-                        },
-                       {
-                            basicCard: {
-                                title: "P2P地震情報より",
-                                image: {
-                                    url: "https://www.p2pquake.net/img/api/gen/" + oid + ".png",
-                                    accessibilityText: "Image alternate text"
-                                },
-                                buttons: [
-                                    {
-                                        title: "P2P地震情報へ",
-                                        openUrlAction: {
-                                            url: "https://www.p2pquake.net/app/web/",
-                                        }
-                                    }
-                                ]
-                            }
-                        
-                        }
-                    ],
-                    suggestions: []
-                }
-            }
-        }
-
-    };
-
-    return JSON.stringify(json);
-};
-
-exports.handler = (event, context, callback) => {
-    var body = "";
+app.intent('earthquake', (conv, { jishin }) => {
     var prefs = null;
     var oid_old = "";
-    if(event.body != null) {
-        body = JSON.parse(event.body);
-        prefs = Number(body.result.parameters.jishin);
+    if(jishin != null) {
+        prefs = Number(jishin);
     }
-
-    if (body.result != undefined && body.result.contexts != undefined) {
-        for (var p in body.result.contexts) {
-            var c = body.result.contexts[p];
-            if (c.parameters != undefined && c.parameters.oid != undefined) {
-                oid_old = c.parameters.oid;
-            }
-        }
-    }
-    if (prefs == null || prefs == 0 ||event.body == null) {
+    
+// not yet impliment
+//    if (body.result != undefined && body.result.contexts != undefined) {
+//        for (var p in body.result.contexts) {
+//            var c = body.result.contexts[p];
+//            if (c.parameters != undefined && c.parameters.oid != undefined) {
+//                oid_old = c.parameters.oid;
+//            }
+//        }
+//    }
+    if (prefs == null || prefs == 0) {
         const message = "すみません、見つかりませんでした。";
-        callback(null, {
-            "statusCode": 200, 
-            "body": build_callback_data(message)
-        });
-        return;
+	return conv.ask(message);
     }
     const params = {
         TableName: "earthquake",
@@ -94,32 +40,52 @@ exports.handler = (event, context, callback) => {
             "prefecture": prefs
         }
     };
-
-    documentClient.get(params, function(err, data) {
-        if (err) {
-            console.error('Unable to get item. Error JSON:', JSON.stringify(err, null, 2));
-            callback(err);
-            return;
-        }
-        var result = data.Item.info.s;
-        var oid = data.Item.info.oid;
-        if (oid != "ffffffffffff" && oid == oid_old) {
-            var vs = result.match(/マグニチュード[^、]+、(\S+)、 最大震度は[^。]+。(\S+)/);
-            if (vs != undefined) {
-                result = "同じ地震が、" + vs[1] + "でした。" + vs[2];
+    return new Promise((resolve, reject) => {
+	documentClient.get(params, function(err, data) {
+            if (err) {
+		console.error('Unable to get item. Error JSON:', JSON.stringify(err, null, 2));
+		reject(err);
             }
-        }
-        if (oid != "ffffffffffff") {
-            callback(null, {
-                "statusCode": 200, 
-                "body": build_callback_data_withoid(result, oid)
-            });
-        } else {
-            callback(null, {
-                "statusCode": 200, 
-                "body": build_callback_data(result)
-            });
-            
-        }
+            var result = data.Item.info.s;
+            var oid = data.Item.info.oid;
+            if (oid != "ffffffffffff" && oid == oid_old) {
+		var vs = result.match(/マグニチュード[^、]+、(\S+)、 最大震度は[^。]+。(\S+)/);
+		if (vs != undefined) {
+                    result = "同じ地震が、" + vs[1] + "でした。" + vs[2];
+		}
+            }
+            if (oid != "ffffffffffff") {
+		// not yet impliment to memory latest oid
+		resolve({
+		    simple: result,
+		    basiccard: new BasicCard({
+			title: "P2P地震情報より",
+			subtitle: "P2P地震情報より",
+			image: new Image({
+		            url: "https://www.p2pquake.net/img/api/gen/" + oid + ".png",
+		            alt: "Image alternate text"
+			}),
+			buttons: new Button({
+			    title: "P2P地震情報へ",
+			    url: "https://www.p2pquake.net/app/web/",
+			}),
+			display: 'CROPPED'
+		    })
+		});
+            }
+	    resolve({
+		simple: result,
+		basiccard: null,
+	    });
+	});
+    }).then(result => {
+	conv.ask(result.simple);
+	if (result.basiccard != null) {
+	    conv.ask(result.basiccard);
+	}
+    }).catch(err => {
+	conv.close(error);
     });
-};
+});
+
+exports.handler = app;
