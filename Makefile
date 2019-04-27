@@ -1,5 +1,6 @@
 MODULE=check-earthquake
 FUNCTION_NAME=earthquake
+#FUNCTION_NAME=earthquake-AoG-test
 all:
 	node index.js
 	zip -r -q ${MODULE} index.js  node_modules
