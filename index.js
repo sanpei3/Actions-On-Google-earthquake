@@ -14,7 +14,7 @@ const {
 // Create an app instance
 const app = dialogflow();
 
-app.intent('earthquake', (conv, { jishin }) => {
+function earthquake(conv,  jishin)  {
     var prefs = null;
     var oid_old = "";
     if(jishin != null) {
@@ -83,6 +83,19 @@ app.intent('earthquake', (conv, { jishin }) => {
     }).catch(err => {
 	conv.close(error);
     });
+};
+    
+app.intent('earthquake', (conv, { jishin }) => {
+    return earthquake(conv,  jishin);
 });
+
+app.intent('over_earthquake', (conv, { jishin }) => {
+    return earthquake(conv,  jishin);
+});
+
+app.intent('Implicit Invocation', (conv, { jishin }) => {
+    return earthquake(conv,  jishin);
+});
+
 
 exports.handler = app;
